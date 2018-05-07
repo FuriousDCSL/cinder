@@ -20,6 +20,7 @@ HARD_FILE           = 'Hard.json'
 EXPERT_FILE         = 'Expert.json'
 EXPERT_PLUS_FILE    = 'ExpertPlus.json'
 #expirmenting with constant song speed and calculating everythign off of that
+#with song speed 60 the not beat value will be the number of seconds since start of song
 SONG_SPEED = 60
 
 #beat saber version
@@ -308,7 +309,7 @@ def exportLevelJSON(levels):
 
 def main():
     if len(sys.argv)!=2:
-        smFile = "ddrexmm.sm" #sys.argv[1]
+        smFile = sys.argv[1]
         print("Processing "+smFile)
     else:
         print('To use please enter the name of .sm file to convert after SM2BS.py ')
