@@ -1,4 +1,5 @@
 import sys
+from _tracemalloc import stop
 #working on adding directions when true and implemented some kind of arrow algorithm will add direction arrows
 DIRECTIONS = False
 
@@ -19,13 +20,13 @@ HARD_FILE           = 'Hard.json'
 EXPERT_FILE         = 'Expert.json'
 EXPERT_PLUS_FILE    = 'ExpertPlus.json'
 #expirmenting with constant song speed and calculating everythign off of that
-SONG_SPEED = 200.0
+SONG_SPEED = 60
 
 #beat saber version
 VERSION = '"1.5.0"'
 
 #need to figure out these variables, setting them as constants for now
-BEATS_PER_BAR = '32'
+BEATS_PER_BAR = '8'
 NOTE_JUMP_SPEED = '10.0'
 SHUFFLE = '0.0'
 SHUFFLE_PERIOD = '0.5'
@@ -38,10 +39,10 @@ def stripComments(simFile):
     simText =''
     for line in simLines:
         simText+=line
-    return simText 
-    
-    
-    
+    return simText
+
+
+
 def getSimFile(smFile):
     # garb the song file
     with open(smFile,'r', encoding='UTF-8') as simFile:
@@ -53,7 +54,7 @@ def parseSimfile(simFile):
     stripCmds =[]
     for cmd in simParsed:
         stripCmds.append(cmd.strip())
-    
+
     return stripCmds
 
 def getHeader(simFile):
@@ -61,8 +62,8 @@ def getHeader(simFile):
     for line in simFile:
         if line[1:6].upper() != 'NOTES':
             header.append(line)
-        
-    headerDict={}    
+
+    headerDict={}
     for item in header:
         if item == '':
             continue
@@ -75,12 +76,12 @@ def getHeader(simFile):
     return headerDict
 
 def parseNote(note):
-    
+
     splitNote = note.split(':')
     sNote = []
     for item in splitNote:
         sNote.append(item.strip())
-    
+
     noteHeader = dict([('type',sNote[1]),('author',sNote[2]),('diff',sNote[3]),('diffNum',sNote[4])])
     if noteHeader['diff'].lower() == 'beginner':
         noteHeader['diff'] = 'Easy'
@@ -96,7 +97,7 @@ def parseNote(note):
     sMeasurses = []
     for measure in measures:
         sMeasurse = measure.strip().split()
-        
+
         sMeasurses.append(sMeasurse)
     return [noteHeader,sMeasurses]
 
@@ -108,17 +109,17 @@ def getNotes(simFile):
     parsedNotes = []
     for note in notes:
         parsedNotes.append(parseNote(note))
-        
+
     return parsedNotes
 
 def genLevelInfoJSON(header,level):
-    
+
     info  = '{'
     info += '"difficulty":"'    + level[0]['diff']      +'",'
     info += '"difficultyRank":' + level[0]['diffNum']   +','
     info += '"audioPath":"'     + header['MUSIC']     +'",'
     info += '"jsonPath":"'      + level[0]['diff']      +'.json"},'
-    
+
     return info
 
 def genInfoJSON(header,levels):
@@ -127,7 +128,7 @@ def genInfoJSON(header,levels):
         info += '"songName":"'          + header['TITLETRANSLIT']       +'",'
     else:
         info += '"songName":"'          + header['TITLE']       +'",'
-    
+
     if 'SUBTITLETRANSLIT' in header.keys() and header['SUBTITLETRANSLIT'] != '':
         info += '"songSubName":"'       + header['SUBTITLETRANSLIT']    +'",'
     elif 'SUBTITLE' in header.keys():
@@ -139,7 +140,7 @@ def genInfoJSON(header,levels):
         info += '"authorName":"'        + header['ARTISTTRANSLIT']      +'",'
     else:
         info += '"authorName":"'        + header['ARTIST']      +'",'
-        
+
     info += '"beatsPerMinute":'     + str(SONG_SPEED)       +','
     info += '"previewStartTime":'   + header['SAMPLESTART'] +','
     info += '"previewDuration":'    + header['SAMPLELENGTH']+','
@@ -151,7 +152,7 @@ def genInfoJSON(header,levels):
             info += genLevelInfoJSON(header,level)
     info = info[:-1]
     info +=']}'
-    
+
     return info
 
 def getSeconds(beatCount):
@@ -166,45 +167,73 @@ def getCurBPM(bpms, beat):
         if beat >= bpm[0]:
             curBPM = bpm[1]
         else:
-            return curBPM 
+            return curBPM
     return curBPM
 
 
 def getLevelNotesJSON(header,level):
     if 'OFFSET' in header.keys():
-        offset = float(header['OFFSET'])
+        offset =-1* float(header['OFFSET'])
     else:
         offset = 0
+    sStops=[]
+
+    if 'STOPS' in header.keys():
+        stops = header['STOPS']
+        stops = stops.split(',')
+        for stop in stops:
+            if stop == '':
+                continue
+            stop = stop.split('=')
+            sStops.append([float(stop[0]),float(stop[1])])
+    print(sStops)
     bpms = header['BPMS'].split(',')
-    beatCount = 0 +getBeat(offset)
-    
+
     sbpms =[]
     for bpm in bpms:
         bpm = bpm.split('=')
         bpm[0]= float(bpm[0])
         bpm[1]= float(bpm[1])
         sbpms.append(bpm)
-    
+
     secondsPassed = offset
     measureCounter = 0
-    
+    curStop = 0
+    stopped = []
+    for stop in sStops:
+        stopped.append(False)
+
+    print(stopped)
     notesJSON = []
     for measure in level[1]:
 #        print ("Measure "+ str(measureCounter))
         noteCounter = 0
         numNotes = len(measure)
         for note in measure:
-            curBPM = getCurBPM(sbpms,measureCounter*4 + float(noteCounter)/float(numNotes))
-#            print(curBPM,secondsPassed,getBeat(secondsPassed))
-#            print (note)
+
+            curSongBeat = measureCounter*4 + float(noteCounter)/float(numNotes)
+            curBPM = getCurBPM(sbpms,curSongBeat)
+            print (secondsPassed, curSongBeat, curBPM)
+            counter  = 0
+            for stop in sStops:
+                if not stopped[counter]:
+                    if stop[0]<curSongBeat:
+                        stopped[counter]=True
+                        print(str(stop[0]) +" STOPPED at beat "+str(curSongBeat)+" curSeconds "+str(secondsPassed)+" for "+ str(stop[1]))
+                        secondsPassed += stop[1]
+                        print(secondsPassed)
+                counter += 1
             left = note[0]
             down = note[1]
             up = note[2]
             right = note[3]
+            curBeat = getBeat(secondsPassed)
+            curBeatStr = str(curBeat)
+
             info = ''
             if left in ['1','2','4']:
                 info += '{'
-                info += '"_time":' + str(getBeat(secondsPassed)) + ','
+                info += '"_time":' + curBeatStr + ','
                 info += '"_lineIndex":' + LEFT_LINE_INDEX +','
                 info += '"_lineLayer":' + LEFT_LINE_LAYER +','
                 info += '"_type":0,"_cutDirection":8}'
@@ -212,7 +241,7 @@ def getLevelNotesJSON(header,level):
             info =''
             if down in ['1','2','4']:
                 info += '{'
-                info += '"_time":' + str(getBeat(secondsPassed)) + ','
+                info += '"_time":' + curBeatStr + ','
                 info += '"_lineIndex":' + DOWN_LINE_INDEX +','
                 info += '"_lineLayer":' + DOWN_LINE_LAYER +','
                 info += '"_type":0,"_cutDirection":8}'
@@ -220,7 +249,7 @@ def getLevelNotesJSON(header,level):
             info = ''
             if up in ['1','2','4']:
                 info += '{'
-                info += '"_time":' + str(getBeat(secondsPassed)) + ','
+                info += '"_time":' + curBeatStr + ','
                 info += '"_lineIndex":' + UP_LINE_INDEX +','
                 info += '"_lineLayer":' + UP_LINE_LAYER +','
                 info += '"_type":1,"_cutDirection":8}'
@@ -228,30 +257,30 @@ def getLevelNotesJSON(header,level):
             info = ''
             if right in ['1','2','4']:
                 info += '{'
-                info += '"_time":' + str(getBeat(secondsPassed)) + ','
+                info += '"_time":' + curBeatStr + ','
                 info += '"_lineIndex":' + RIGHT_LINE_INDEX +','
                 info += '"_lineLayer":' + RIGHT_LINE_LAYER +','
                 info += '"_type":1,"_cutDirection":8}'
                 notesJSON.append(info)
-            
-            
+
+
             secondsPassed+= 4/float(numNotes) * 60.0/float(curBPM)
             noteCounter+=1
-            
-        
+
+
         measureCounter +=1
-    
+
     notesJSONText = ''
     for note in notesJSON:
 #        print(note)
         notesJSONText+=note+','
 #    print(notesJSONText[:-1])
     return notesJSONText[:-1]
-        
+
 
 
 def getLevelJSON(header, level):
-    
+
     info  = level[0]['diff']+'|{'
     info += '"_version":'           + VERSION           + ','
     info += '"_beatsPerMinute":'    + str(SONG_SPEED)        + ','
@@ -261,8 +290,8 @@ def getLevelJSON(header, level):
     info += '"_shufflePeriod":'     + SHUFFLE_PERIOD    + ','
     info += '"_events":[],'
     info += '"_notes":['            + getLevelNotesJSON(header,level) +'],'
-    info += '"_obstacles":[]}'  
-    
+    info += '"_obstacles":[]}'
+
     return info
 
 def exportInfo(info):
@@ -278,23 +307,23 @@ def exportLevelJSON(levels):
             levelFile.write(level[1])
 
 def main():
-    if len(sys.argv)==2:
-        smFile = sys.argv[1]
+    if len(sys.argv)!=2:
+        smFile = "ddrexmm.sm" #sys.argv[1]
         print("Processing "+smFile)
     else:
         print('To use please enter the name of .sm file to convert after SM2BS.py ')
         exit()
     simFile = getSimFile(smFile)
-    
-    simParsed = parseSimfile(simFile)    
-    
+
+    simParsed = parseSimfile(simFile)
+
     simHeader = getHeader(simParsed)
 
     simLevels = getNotes(simParsed)
 
     infoJSON = (genInfoJSON(simHeader,simLevels))
     levelsJSON =[]
-    
+
     for level in simLevels:
         if level[0]['type'].lower() =='dance-single':
             levelsJSON.append( getLevelJSON(simHeader,level))
@@ -303,6 +332,6 @@ def main():
     exportInfo(infoJSON)
     exportLevelJSON(levelsJSON)
 #    print(levelsJSON)
-        
+
 if __name__ =='__main__':
     main()
