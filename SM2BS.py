@@ -1,7 +1,6 @@
 import sys
-from _tracemalloc import stop
-#working on adding directions when true and implemented some kind of arrow algorithm will add direction arrows
-DIRECTIONS = False
+import tkinter
+import tkinter.filedialog
 
 LEFT_LINE_INDEX     = '0'
 DOWN_LINE_INDEX     = '1'
@@ -12,7 +11,7 @@ LEFT_LINE_LAYER    = '0'
 DOWN_LINE_LAYER    = '0'
 UP_LINE_LAYER      = '0'
 RIGHT_LINE_LAYER   = '0'
-#song chart will be input from command line at some point
+
 INFO_FILE           = 'info.json'
 EASY_FILE           = 'Easy.json'
 NORMAL_FILE         = 'Normal.json'
@@ -171,6 +170,22 @@ def getCurBPM(bpms, beat):
             return curBPM
     return curBPM
 
+def setSongSpeed(header):
+    bpms = header['BPMS'].split(',')
+
+    sbpms =[]
+    for bpm in bpms:
+        bpm = bpm.split('=')
+        bpm[0]= float(bpm[0])
+        bpm[1]= float(bpm[1])
+        sbpms.append(bpm)
+
+    if (len(bpms)==1):
+        global SONG_SPEED
+        SONG_SPEED = sbpms[0][1]
+    print (SONG_SPEED)
+
+
 
 def getLevelNotesJSON(header,level):
     if 'OFFSET' in header.keys():
@@ -187,7 +202,7 @@ def getLevelNotesJSON(header,level):
                 continue
             stop = stop.split('=')
             sStops.append([float(stop[0]),float(stop[1])])
-    print(sStops)
+#    print(sStops)
     bpms = header['BPMS'].split(',')
 
     sbpms =[]
@@ -197,6 +212,7 @@ def getLevelNotesJSON(header,level):
         bpm[1]= float(bpm[1])
         sbpms.append(bpm)
 
+
     secondsPassed = offset
     measureCounter = 0
     curStop = 0
@@ -204,7 +220,7 @@ def getLevelNotesJSON(header,level):
     for stop in sStops:
         stopped.append(False)
 
-    print(stopped)
+#    print(stopped)
     notesJSON = []
     for measure in level[1]:
 #        print ("Measure "+ str(measureCounter))
@@ -214,7 +230,7 @@ def getLevelNotesJSON(header,level):
 
             curSongBeat = measureCounter*4 + float(noteCounter)/float(numNotes)
             curBPM = getCurBPM(sbpms,curSongBeat)
-            print (secondsPassed, curSongBeat, curBPM)
+#            print (secondsPassed, curSongBeat, curBPM)
             counter  = 0
             for stop in sStops:
                 if not stopped[counter]:
@@ -295,44 +311,54 @@ def getLevelJSON(header, level):
 
     return info
 
-def exportInfo(info):
+def exportInfo(info,dir):
     print("Writing info.json")
-    with open(INFO_FILE,'w') as infoFile:
+    infoStore = dir+'/'+INFO_FILE
+    print(infoStore)
+    with open(infoStore,'w') as infoFile:
         infoFile.write(info)
 
-def exportLevelJSON(levels):
+def exportLevelJSON(levels,dir):
     for level in levels:
         level = level.split('|')
         print("Writing difficulty file "+level[0]+".json")
-        with open(level[0]+'.json','w') as levelFile:
+        infoStore = dir+'/'+level[0]
+
+        print(infoStore)
+
+        with open(infoStore+'.json','w') as levelFile:
             levelFile.write(level[1])
 
 def main():
-    print (len(sys.argv))
     if len(sys.argv)==2:
         smFile = sys.argv[1]
-        print("Processing "+smFile)
     else:
-        print('To use please enter the name of .sm file to convert after SM2BS.py ')
-        exit()
+        smFile = tkinter.filedialog.askopenfilename()
+    print("Processing "+smFile)
+
     simFile = getSimFile(smFile)
 
     simParsed = parseSimfile(simFile)
 
     simHeader = getHeader(simParsed)
 
+    setSongSpeed(simHeader)
+    print(SONG_SPEED)
+
     simLevels = getNotes(simParsed)
 
-    infoJSON = (genInfoJSON(simHeader,simLevels))
     levelsJSON =[]
 
     for level in simLevels:
         if level[0]['type'].lower() =='dance-single':
             levelsJSON.append( getLevelJSON(simHeader,level))
+    infoJSON = (genInfoJSON(simHeader,simLevels))
 
 #    print(infoJSON)
-    exportInfo(infoJSON)
-    exportLevelJSON(levelsJSON)
+    storageFolder = tkinter.filedialog.askdirectory()
+
+    exportInfo(infoJSON,storageFolder)
+    exportLevelJSON(levelsJSON,storageFolder)
 #    print(levelsJSON)
 
 if __name__ =='__main__':
