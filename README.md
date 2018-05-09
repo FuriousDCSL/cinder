@@ -13,7 +13,7 @@ compensate. This makes the files unable to be edited by the current editors.
 If there is only one BPM in the song it will be set normally and the file will
 be normally editable
 
-This program will insert the offset in the sm file, so the note may be off in 
+This program will insert the offset in the sm file, so the note may be off in
 another editor. You will have to fix that by editing the sound file and sm
 file to sync 0 offset.
 
@@ -21,8 +21,12 @@ To use the program, install python version 3.6.5 (other version 3 will
   probably work).
 
 
+open SM2BS.py
 
- also if you want an image for the Songs
-make a 256x256 png and put it in the folder with the name cover.png.
+a file dialog will appear, select the sm file you wish to convert.
 
-(edit difficulties may crash the program at this point untested)
+A second dialog will appear. Select the directory where you want to
+save the json files.
+
+If you want an image for the Songs make a 256x256 png and put it in the
+folder with the name cover.png.
