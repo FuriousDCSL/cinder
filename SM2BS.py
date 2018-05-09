@@ -21,7 +21,7 @@ EXPERT_FILE         = 'Expert.json'
 EXPERT_PLUS_FILE    = 'ExpertPlus.json'
 #expirmenting with constant song speed and calculating everythign off of that
 #with song speed 60 the not beat value will be the number of seconds since start of song
-SONG_SPEED = 60
+SONG_SPEED = 200
 
 #beat saber version
 VERSION = '"1.5.0"'
@@ -308,7 +308,8 @@ def exportLevelJSON(levels):
             levelFile.write(level[1])
 
 def main():
-    if len(sys.argv)!=2:
+    print (len(sys.argv))
+    if len(sys.argv)==2:
         smFile = sys.argv[1]
         print("Processing "+smFile)
     else:
