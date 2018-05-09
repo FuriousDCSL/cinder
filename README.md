@@ -21,9 +21,9 @@ To use the program, install python version 3.6.5 (other version 3 will
   probably work).
 
 
-open SM2BS.py
+Open SM2BS.exe
 
-a file dialog will appear, select the sm file you wish to convert.
+A file dialog will appear, select the sm file you wish to convert.
 
 A second dialog will appear. Select the directory where you want to
 save the json files.
