@@ -1,3 +1,5 @@
+import argparse
+import glob
 import sys
 import tkinter
 import tkinter.filedialog
@@ -40,8 +42,6 @@ def stripComments(simFile):
     for line in simLines:
         simText+=line
     return simText
-
-
 
 def getSimFile(smFile):
     # garb the song file
@@ -329,37 +329,54 @@ def exportLevelJSON(levels,dir):
         with open(infoStore+'.json','w') as levelFile:
             levelFile.write(level[1])
 
-def main():
-    if len(sys.argv)==2:
-        smFile = sys.argv[1]
-    else:
-        smFile = tkinter.filedialog.askopenfilename()
-    print("Processing "+smFile)
 
+def convertSimToJson(smFile, storageFolder=None):
+    
     simFile = getSimFile(smFile)
-
     simParsed = parseSimfile(simFile)
-
     simHeader = getHeader(simParsed)
-
     setSongSpeed(simHeader)
     print(SONG_SPEED)
-
     simLevels = getNotes(simParsed)
-
     levelsJSON =[]
-
     for level in simLevels:
         if level[0]['type'].lower() =='dance-single':
             levelsJSON.append( getLevelJSON(simHeader,level))
     infoJSON = (genInfoJSON(simHeader,simLevels))
 
-#    print(infoJSON)
-    storageFolder = tkinter.filedialog.askdirectory()
 
+    if not storageFolder:
+        storageFolder = tkinter.filedialog.askdirectory()
+    
     exportInfo(infoJSON,storageFolder)
     exportLevelJSON(levelsJSON,storageFolder)
-#    print(levelsJSON)
+
+
+def main():
+    
+    storageFolder=None
+    parser = argparse.ArgumentParser(description='Convert Stepmania songs into Beat Saber songs.')
+    parser.add_argument('--file', action='store', help='specify an sm file to convert')
+    parser.add_argument('--dir', action='store', help='specify a dir containing an sm file and possible image. New files are created in-place')
+    #parser.add_argument('--img', action='store_true', help='Attempt to rename the image from common stepmania background names.')
+
+    args = parser.parse_args()
+    
+    if args.file:
+        smFile = args.file
+    elif args.dir:
+        storageFolder=args.dir
+        if storageFolder[-1] != '/':
+            storageFolder += '/'
+        pattern = storageFolder + '*.sm'
+        print(pattern)
+        smFile=glob.glob(pattern)[0]
+    else:
+        smFile = tkinter.filedialog.askopenfilename()
+
+    print("Processing "+smFile)
+
+    convertSimToJson(smFile, storageFolder=storageFolder)
 
 if __name__ =='__main__':
     main()
